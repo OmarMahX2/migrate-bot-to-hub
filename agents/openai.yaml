@@ -1,0 +1,4 @@
+interface:
+  display_name: "TJM Bot Hub Migration"
+  short_description: "Migrate TJM bots to Engine Hub License mode"
+  default_prompt: "Use $migrate-bot-to-hub to migrate this bot to the TJM Hub."
