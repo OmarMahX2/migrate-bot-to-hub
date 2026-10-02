@@ -1,13 +1,13 @@
 ---
 name: migrate-bot-to-hub
-description: Migrate a TJM pharmacy bot to the TJM Hub. Find or create its license, publish current code and refreshed dependencies to main through a PR with at least five title words and no description, configure GitHub mode, retrieve and customize the remote environment, upload resources and external secrets, sync the bundle, and return the license code for the user to run it.
+description: Migrate a TJM bot to the TJM Hub. Find or create its license, publish current code and refreshed dependencies to main through a PR with at least five title words and no description, configure GitHub mode, retrieve and customize the remote environment, upload resources and external secrets, sync the bundle, and return the license code for the user to run it.
 ---
 
 # TJM Bot Hub Migration
 
 Complete the six steps in order. Dependency preparation belongs **before the PR**, and the PR must merge **before the Hub sync**. The final deliverable is the verified license code plus a brief bundle result. The user enters the code and runs the bot.
 
-Read [references/rx-works.md](references/rx-works.md) for the demonstrated example, remote file discovery, and exceptional Git history. Its identities, commits, and paths are examples, not defaults. Do not store real license codes or secret values in reusable documentation.
+Use this procedure for any supported TJM bot. Resolve the customer, workflow, repository, machine, runtime, and assets for each migration; example paths and values are placeholders, not defaults. Do not store real license codes or secret values in reusable documentation.
 
 ## Establish the migration target
 
@@ -15,24 +15,24 @@ Resolve the following from the request, repository, Hub, and saved remote-machin
 
 | Information | Evidence to use |
 | --- | --- |
-| Pharmacy and intended bot/workflow | User request, existing Hub client/license, bot configuration |
+| Customer and intended bot/workflow | User request, existing Hub client/license, bot configuration |
 | Local repository and GitHub URL | Exact project path and `git remote -v` |
 | Intended latest implementation | Fetched branch commits, changes, and actual workflow |
 | Remote computer and Connect profile | Saved device alias/hostname and active bot settings |
 | Bot environment and required external assets | Active remote bot folder and code references |
-| License identity | Matching pharmacy, bot, record ID, and separate code/key |
+| License identity | Matching customer, bot, record ID, and separate code/key |
 
 Creating or editing this skill alone does not authorize a live migration. During an authorized migration, carry existing authorization forward and do not ask again for routine steps already requested. Preserve unrelated local work. Keep production launch under the user's control unless separately requested.
 
 Use project-specific names with branch prefixes `feat/`, `fix/`, or `chore/`, without assistant branding. Treat walkthrough documents as read-only unless the user's exact Maestro authorization directly precedes the edit request.
 
-Store temporary prescription, QA, and investigation artifacts outside repositories under `/tmp/tjm-qa-artifacts/<pharmacy-slug>/<case-or-document-id>/` or Windows `C:\tmp\tjm-qa-artifacts\<pharmacy-slug>\<case-or-document-id>\`. Protect downloaded originals containing secrets. Preserve processing ledgers, recovery markers, and evidence; never start with an empty replacement directory to bypass duplicate-processing safeguards.
+Store temporary QA and investigation artifacts outside repositories under `/tmp/tjm-qa-artifacts/<customer-or-project-slug>/<case-or-task-id>/` or Windows `C:\tmp\tjm-qa-artifacts\<customer-or-project-slug>\<case-or-task-id>\`. Derive the slug from the customer or repository; keep each customer's artifacts separate. For pharmacy migrations, keep prescription artifacts in that pharmacy's directory. Protect downloaded originals containing secrets. Preserve processing ledgers, recovery markers, and evidence; never start with an empty replacement directory to bypass duplicate-processing safeguards.
 
 ## 1. Find or create the license
 
 1. Open `https://hub.tjmlabs.com` in Chrome. Reuse the correct existing tab and session.
-2. Use the global field `Search users, licenses, plans...`. Search the pharmacy's display name, then a distinctive term or alternate name if necessary.
-3. Inspect the **Licenses** results, not only the client account. Match pharmacy, bot, workflow, and division when shown. If two licenses plausibly match, resolve that ambiguity before changing either.
+2. Use the global field `Search users, licenses, plans...`. Search by the known license code or customer's display name, then a distinctive term or alternate name if necessary.
+3. Inspect the **Licenses** results, not only the client account. Match customer, bot, workflow, and division when shown. If two licenses plausibly match, resolve that ambiguity before changing either.
 4. Reuse a matching license even when it is Regular, Under Development, unassigned, or never synced. Those states do not justify a duplicate.
 5. If no matching license exists, use New License. Inspect the current form, select the verified client and bot, and fill required values from evidence. Do not invent billing, expiry, or machine details. Ask for a genuinely missing required value.
 6. Confirm the saved client/bot identity and capture both the numeric record ID and the actual **license code/key**. The numeric ID in `/license/edit/<record-id>/` is not the code the user should enter.
@@ -55,13 +55,17 @@ git fetch --prune origin
 git for-each-ref --sort=-committerdate --format='%(refname:short) %(committerdate:iso8601) %(objectname:short) %(subject)' refs/remotes/origin
 ```
 
-Inspect candidate branches with `git log`, `git diff --stat`, and the relevant source changes. Use commit dates to identify candidates, then verify which implements the intended pharmacy workflow. A newer timestamp or promising branch name alone is not sufficient.
+Inspect candidate branches with `git log`, `git diff --stat`, and the relevant source changes. Use commit dates to identify candidates, then verify which implements the intended workflow. A newer timestamp or promising branch name alone is not sufficient.
 
 Preserve unrelated edits. Reuse a suitable isolated checkout when necessary, or create a project-specific migration branch from the selected implementation. If that implementation already lives on main, base the dependency update on current origin/main. Do not reset or stash the user's work without need.
 
-Check ancestry before merging. Ordinary related histories should use an ordinary PR. Unrelated history requires deliberate reconciliation and tree verification; see the exceptional Rx Works reference. Do not apply an `ours` merge merely to silence conflicts or force-push main.
+Check ancestry before merging. Ordinary related histories should use an ordinary PR. For unrelated histories, inspect both trees and reconcile the intended code and retained files explicitly; verify the final tree before creating the PR. Do not apply an `ours` merge merely to silence conflicts or force-push main.
 
-### Refresh Kroll before the PR
+### Refresh dependencies before the PR
+
+Inspect the repository's dependency manifest, lockfile, documented setup, and supported runtime. Use its existing package manager and approved dependency sources. Refresh and commit the applicable manifest and lockfile before the PR; do not add a package or switch tooling merely because an example below uses it. For a uv-managed bot without the Kroll dependency, run `uv sync`, the appropriate `uv sync --upgrade-package <required-package>` when an upgrade is required, and `uv lock`, inspecting each result. For other package managers, use the repository's equivalent install and lock commands.
+
+Apply the following additional requirement only when the bot already depends on `kroll-automation`.
 
 For a Kroll bot, update the existing `tool.uv.sources` entry in **the bot's** `pyproject.toml`:
 
@@ -84,22 +88,22 @@ Inspect `uv.lock` for the `kroll-automation` package, the `?branch=dev` source, 
 
 If installation fails because of authentication, resolution, or platform support, address that actual failure. Do not silently substitute `--no-sync`, skip a command, or report success. Local installation can use cached credentials and does not establish that the remote Engine has authentication.
 
-Run applicable existing offline checks and `git diff --check`. Do not launch a pharmacy workflow to test packaging. Confirm required runtime entry points and resource references remain present.
+Run applicable existing offline checks and `git diff --check`. Do not launch a production workflow to test packaging. Confirm required runtime entry points and resource references remain present.
 
 ### Create and merge the PR
 
-Stage explicit intended files, including `pyproject.toml` and `uv.lock`. Inspect `git diff --cached --stat` and the staged diff. Confirm no environment, credential, prescription, QA, or unrelated files are included. Do not use a blanket `git add -A` without inspecting its scope.
+Stage explicit intended files, including the applicable dependency manifest and lockfile (`pyproject.toml` and `uv.lock` for uv). Inspect `git diff --cached --stat` and the staged diff. Confirm no environment, credential, production data, QA, or unrelated files are included. Do not use a blanket `git add -A` without inspecting its scope.
 
 **Every new PR title must contain at least five words.** Use a natural, specific title; count its whitespace-separated words before submitting. Suitable examples:
 
-- `Prepare Rx Works for Hub` — five words.
-- `Update Rx Works Kroll dependency` — five words.
-- `Migrate Gander Pharmacy to the Hub` — six words.
+- `Prepare bot deployment for the Hub` — six words.
+- `Refresh shared dependencies for Hub migration` — six words.
+- `Publish current workflow to Hub main` — six words.
 
 **The description must be explicitly empty.** This overrides PR templates and normal description-writing defaults. Example, replacing the example branch and title with the actual migration values:
 
 ```sh
-gh pr create --base main --head chore/rx-works-hub-migration --title 'Prepare Rx Works for Hub' --body ''
+gh pr create --base main --head chore/hub-migration --title 'Prepare bot deployment for the Hub' --body ''
 ```
 
 Attach each created PR to the task when the attachment tool is available. Inspect the PR's title, body, files, head SHA, mergeability, and checks:
@@ -144,11 +148,11 @@ After resolving the adapter's absolute path from that skill, use these command p
 
 ```sh
 python3 "$task_transfer_adapter" devices --profile labs
-python3 "$task_transfer_adapter" list --profile labs --device 'Rx Works' --remote-path 'C:\Users\<remote-user>\TJM Bot Project\Prescription-Works-bot'
-python3 "$task_transfer_adapter" download --profile labs --device 'Rx Works' --remote-path 'C:\Users\<remote-user>\TJM Bot Project\Prescription-Works-bot\.env' --local-path '/tmp/tjm-qa-artifacts/prescription-works/hub-migration/bot-original.env'
+python3 "$task_transfer_adapter" list --profile labs --device '<saved-device-alias>' --remote-path '<active-bot-folder>'
+python3 "$task_transfer_adapter" download --profile labs --device '<saved-device-alias>' --remote-path '<active-bot-env-path>' --local-path '/tmp/tjm-qa-artifacts/<customer-or-project-slug>/hub-migration/bot-original.env'
 ```
 
-Use the default profile instead when the device belongs to TJM Connect rather than TJM Labs Connect. Keep the pharmacy directory specific to the actual migration. Download into an available protected location without replacing an existing original.
+Use the default profile instead when the device belongs to TJM Connect rather than TJM Labs Connect. Replace every placeholder with the verified value and use the remote platform's path format. Keep the artifact directory specific to the actual migration. Download into an available protected location without replacing an existing original.
 
 When the active bot folder is uncertain, locate the Engine directory and retrieve its settings database. Inspect the database schema read-only, then select only the settings needed to locate the bot: automation/partner name, script path, Python executable path, and optional secrets path. The Engine's own `.env` contains Engine configuration and is not automatically the bot's environment.
 
@@ -156,15 +160,15 @@ Download the active bot's `.env` and referenced external credentials. Keep prote
 
 ### Customize the deployment environment
 
-Preserve every unrelated original runtime value. Add or update:
+Preserve every unrelated original runtime value. Populate the following deployment fields from the actual bot and the Engine's supported configuration. Include PMS metadata only for a bot that uses it:
 
 ```env
-SCRIPT_PATH=bot.py
-PYTHON_PATH=.venv\Scripts\python.exe
-PARTNER_NAME=<pharmacy display name>
-AUTOMATION_NAME=<pharmacy bot display name>
-BOT_PMS=kroll
-BOT_CUSTOMER=<existing pharmacy logging identifier>
+SCRIPT_PATH=<bundle-relative launcher>
+PYTHON_PATH=<supported interpreter path for this runtime>
+PARTNER_NAME=<customer display name>
+AUTOMATION_NAME=<automation display name>
+BOT_PMS=<actual PMS if applicable>
+BOT_CUSTOMER=<existing customer logging identifier>
 BOT_FLOW=<actual workflow>
 BOT_VERSION=<actual bot version>
 ENVIRONMENT=prod
@@ -172,15 +176,15 @@ ENVIRONMENT=prod
 
 | Field | How to choose it |
 | --- | --- |
-| SCRIPT_PATH | Verify the bot's root launcher; use the demonstrated `bot.py` when present |
-| PYTHON_PATH | Bundle-relative Windows virtual-environment interpreter |
-| PARTNER_NAME / AUTOMATION_NAME | Actual pharmacy and bot display names |
-| BOT_PMS | Actual PMS; kroll for the demonstrated Kroll workflow |
+| SCRIPT_PATH | Verified bundle-relative launcher; use `bot.py` only when that file is the entry point |
+| PYTHON_PATH | Supported interpreter for the deployed runtime; for a Windows Python virtual environment, `.venv\Scripts\python.exe`; verify platform and Engine support before choosing another path |
+| PARTNER_NAME / AUTOMATION_NAME | Actual customer and automation display names |
+| BOT_PMS | Actual PMS for a PMS bot; omit when inapplicable unless the runtime explicitly requires it |
 | BOT_CUSTOMER / BOT_FLOW | Preserve existing telemetry identifiers or derive from verified bot configuration |
 | BOT_VERSION | Existing configured/project version, not a guessed release |
-| ENVIRONMENT | prod for the requested production migration |
+| ENVIRONMENT | prod for a production migration; use the verified target environment for another deployment |
 
-The user's Pace example is not a universal default. Do not overwrite a pharmacy's existing secrets with another pharmacy's values.
+Replace placeholders before upload. Do not insert Python-specific settings into a different runtime without verifying that the Engine expects them. Keep each customer's credentials separate and preserve its existing secrets.
 
 For missing `GITHUB_TOKEN`, ask where the approved token is stored or which vault item to use; ask for its location, not its value in chat. If the user says to skip or that it is unnecessary, continue with:
 
@@ -189,7 +193,7 @@ For missing `GITHUB_TOKEN`, ask where the approved token is stored or which vaul
 GITHUB_TOKEN=
 ```
 
-Use an empty placeholder, not a fake nonempty token or a token borrowed from another pharmacy. Do not claim remote dependency installation passed without testing it separately.
+Use an empty placeholder, not a fake nonempty token or a token borrowed from another customer. Do not claim remote dependency installation passed without testing it separately.
 
 Use a dotenv-aware editor or equivalent careful update that preserves unrelated settings and handles Windows backslashes. Compare parsed original and prepared values privately: only the intended keys should differ. Report key names and nonsecret deployment metadata, not secret values.
 
@@ -202,25 +206,25 @@ rg -n --glob '*.py' 'load_dotenv|os.getenv|os.environ|service_account|resources|
 git ls-files
 ```
 
-These commands inspect source and tracked paths; do not broadly print secret file contents. Create an inventory recording local source, intended bundle-relative path, and whether each file is tracked or external. Include nested resources and every required non-repository configuration file. Exclude caches, virtual environments, logs, source prescriptions, and processing/recovery ledgers from deployment uploads.
+These Python search patterns are examples; adapt them to the bot's language and configuration libraries. Inspect source and tracked paths without broadly printing secret file contents. Create an inventory recording local source, intended bundle-relative path, and whether each file is tracked or external. Include nested resources and every required non-repository configuration file. Exclude caches, virtual environments, logs, production input data, and processing/recovery ledgers from deployment uploads.
 
 Keep the prepared `.env` and credential files locally at their intended runtime paths and ignored/untracked. Check the exact paths with `git check-ignore` and `git ls-files -- <path>`. Use existing ignore rules; add exact filenames to local `.git/info/exclude` when a local rule is sufficient, or update shared `.gitignore` when the repository requires it. Do not blanket-ignore all JSON files. Ignoring an already tracked secret does not remove it from Git; handle that as a real issue before committing.
 
-Protect secret copies with restrictive local permissions. Validate credential JSON structure privately without printing its contents. Replace obsolete absolute machine-specific credential paths with the intended bundle-relative paths, such as `GOOGLE_SERVICE_ACCOUNT_FILE=rx-works.json` when uploaded at root. Confirm the code resolves that path correctly.
+Protect secret copies with restrictive local permissions. Validate credential JSON structure privately without printing its contents. Replace obsolete absolute machine-specific credential paths with the intended bundle-relative paths, such as `GOOGLE_SERVICE_ACCOUNT_FILE=service-account.json` when the bot uses that variable and the file is uploaded at root. Confirm the code resolves that path correctly.
 
 ### Upload to the matching license
 
-1. Open External Files. Search its license selector by **license code or pharmacy name**, not numeric record ID. Verify the selected pharmacy and bot.
+1. Open External Files. Search its license selector by **license code or customer name**, not numeric record ID. Verify the selected customer and bot.
 2. Use **Files** mode for root `.env` and individual credentials. Leave **Path Prefix** empty for root files.
-3. Use **Folder** mode for the resources directory. Select that directory and accept Chrome's folder-selection prompt. The example retained paths `resources/README.md` and `resources/patient_not_found.png`.
+3. Use **Folder** mode for each required resource directory absent from the repository. Select the directory and accept Chrome's folder-selection prompt. Preserve the paths expected by the code, such as `resources/template.png`. Do not invent a resource folder when the bot does not require one.
 4. For individual files needed below root, use the exact relative Path Prefix. Avoid adding `resources/` twice when folder selection already preserves it.
-5. Inspect **Selected Files** before submission: correct names, relative paths, count, and sizes. Do not select the whole project, Engine folder, or a directory containing prescription data.
+5. Inspect **Selected Files** before submission: correct names, relative paths, count, and sizes. Do not select the whole project, Engine folder, or a directory containing production input data.
 6. Click the page's **Upload** button. Selecting files or accepting Chrome's folder prompt alone does not complete the upload.
 7. Require the success message and inspect **Uploaded Files**. Compare the inventory against code expectations and local preparation. Resolve omissions or wrong prefixes before syncing.
 
 Respect limits reported by the current UI. If an intended file already exists, establish whether this is an authorized replacement and verify the resulting path; do not silently delete unrelated files.
 
-**Completion evidence:** the customized environment preserves original secrets; all required external files are local and ignored; the correct license lists the expected relative paths, including the resource folder.
+**Completion evidence:** the customized environment preserves original secrets; all required external files are local and ignored; the correct license lists every expected relative path, including required resource folders when applicable.
 
 ## 5. Sync the bundle and verify the published commit
 
@@ -230,7 +234,7 @@ Click `SYNC NOW` in the selected license's External Files page. The UI may show 
 
 Wait for the final result. If progress remains stale, refresh the page and inspect the persisted status. Do not repeatedly submit builds. Require `Bundle created` or equivalent explicit success, then verify:
 
-- The selected license still matches the pharmacy and bot.
+- The selected license still matches the customer and bot.
 - **BRANCH** is main.
 - **COMMIT** matches the expected published main commit; compare the shown short SHA to the full verified SHA.
 - The external-file inventory remains complete.
@@ -250,7 +254,7 @@ License code: <verified-license-code>
 Bundle synced from main at <verified-commit>.
 ```
 
-The user enters the code in the Hub/Engine and runs the bot. This handoff completes the demonstrated procedure. Do not independently launch the production workflow or claim remote activation, dependency installation, or execution succeeded unless separately observed.
+The user enters the code in the Hub/Engine and runs the bot. This handoff completes the migration procedure. Do not independently launch the production workflow or claim remote activation, dependency installation, or execution succeeded unless separately observed.
 
 ## UI recovery
 

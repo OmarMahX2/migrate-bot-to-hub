@@ -7,5 +7,4 @@ __pycache__/
 *.env
 credentials.json
 token.json
-rx-works.json
 *service-account*.json
